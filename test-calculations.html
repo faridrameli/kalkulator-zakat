@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Kalkulator Zakat</title>
+    <script src="lib.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+        h1 { color: #059669; }
+        .test { margin: 15px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .pass { background: #d1fae5; border-color: #059669; }
+        .fail { background: #fee2e2; border-color: #dc2626; }
+        .test-name { font-weight: bold; margin-bottom: 10px; }
+        .test-result { font-family: monospace; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <h1>Test Pengiraan Zakat</h1>
+    <div id="results"></div>
+
+    <script>
+        const tests = [];
+
+        function test(name, fn) {
+            tests.push({ name, fn });
+        }
+
+        function assertEqual(actual, expected, message) {
+            if (Math.abs(actual - expected) < 0.01) {
+                return { pass: true, message };
+            }
+            return { pass: false, message: `${message} - Expected: ${expected}, Got: ${actual}` };
+        }
+
+        function assertTrue(value, message) {
+            return { pass: value === true, message };
+        }
+
+        function assertFalse(value, message) {
+            return { pass: value === false, message };
+        }
+
+        // Test 1: Below nisab
+        test("Pendapatan di bawah nisab", () => {
+            const result = ZakatLib.calculateZakat(10000);
+            return [
+                assertFalse(result.isEligible, "Should not be eligible"),
+                assertEqual(result.zakatDue, 0, "Zakat should be 0"),
+                assertEqual(result.remaining, 5000, "Remaining should be 5000")
+            ];
+        });
+
+        // Test 2: At nisab
+        test("Pendapatan tepat pada nisab", () => {
+            const result = ZakatLib.calculateZakat(15000);
+            return [
+                assertTrue(result.isEligible, "Should be eligible"),
+                assertEqual(result.zakatDue, 375, "Zakat should be 375 (15000 × 0.025)"),
+                assertEqual(result.amountAfterZakat, 14625, "After zakat should be 14625")
+            ];
+        });
+
+        // Test 3: Above nisab
+        test("Pendapatan di atas nisab", () => {
+            const result = ZakatLib.calculateZakat(50000);
+            return [
+                assertTrue(result.isEligible, "Should be eligible"),
+                assertEqual(result.zakatDue, 1250, "Zakat should be 1250 (50000 × 0.025)"),
+                assertEqual(result.amountAfterZakat, 48750, "After zakat should be 48750")
+            ];
+        });
+
+        // Test 4: Gold below nisab
+        test("Emas di bawah nisab (50g)", () => {
+            const result = ZakatLib.calculateGoldZakat(50, 176, 'emas');
+            return [
+                assertFalse(result.isEligible, "Should not be eligible"),
+                assertEqual(result.zakatDue, 0, "Zakat should be 0"),
+                assertEqual(result.remainingGrams, 35, "Remaining grams should be 35")
+            ];
+        });
+
+        // Test 5: Gold at nisab
+        test("Emas tepat pada nisab (85g)", () => {
+            const result = ZakatLib.calculateGoldZakat(85, 176, 'emas');
+            const totalValue = 85 * 176; // 14960
+            const expectedZakat = totalValue * 0.025; // 374
+            return [
+                assertTrue(result.isEligible, "Should be eligible"),
+                assertEqual(result.totalValue, 14960, "Total value should be 14960"),
+                assertEqual(result.zakatDue, 374, "Zakat should be 374")
+            ];
+        });
+
+        // Test 6: Gold above nisab
+        test("Emas di atas nisab (100g)", () => {
+            const result = ZakatLib.calculateGoldZakat(100, 176, 'emas');
+            const totalValue = 100 * 176; // 17600
+            const expectedZakat = totalValue * 0.025; // 440
+            return [
+                assertTrue(result.isEligible, "Should be eligible"),
+                assertEqual(result.totalValue, 17600, "Total value should be 17600"),
+                assertEqual(result.zakatDue, 440, "Zakat should be 440")
+            ];
+        });
+
+        // Test 7: Silver below nisab
+        test("Perak di bawah nisab (400g)", () => {
+            const result = ZakatLib.calculateGoldZakat(400, 3.5, 'perak');
+            return [
+                assertFalse(result.isEligible, "Should not be eligible"),
+                assertEqual(result.zakatDue, 0, "Zakat should be 0"),
+                assertEqual(result.remainingGrams, 195, "Remaining grams should be 195")
+            ];
+        });
+
+        // Test 8: Silver at nisab
+        test("Perak tepat pada nisab (595g)", () => {
+            const result = ZakatLib.calculateGoldZakat(595, 3.5, 'perak');
+            const totalValue = 595 * 3.5; // 2082.50
+            const expectedZakat = totalValue * 0.025; // 52.06
+            return [
+                assertTrue(result.isEligible, "Should be eligible"),
+                assertEqual(result.totalValue, 2082.5, "Total value should be 2082.5"),
+                assertEqual(result.zakatDue, 52.06, "Zakat should be 52.06")
+            ];
+        });
+
+        // Test 9: Business below nisab
+        test("Perniagaan di bawah nisab", () => {
+            const result = ZakatLib.calculateBusinessZakat(20000, 10000);
+            return [
+                assertFalse(result.isEligible, "Should not be eligible (net assets = 10000)"),
+                assertEqual(result.netAssets, 10000, "Net assets should be 10000"),
+                assertEqual(result.zakatDue, 0, "Zakat should be 0"),
+                assertEqual(result.remaining, 5000, "Remaining should be 5000")
+            ];
+        });
+
+        // Test 10: Business at nisab
+        test("Perniagaan tepat pada nisab", () => {
+            const result = ZakatLib.calculateBusinessZakat(20000, 5000);
+            return [
+                assertTrue(result.isEligible, "Should be eligible (net assets = 15000)"),
+                assertEqual(result.netAssets, 15000, "Net assets should be 15000"),
+                assertEqual(result.zakatDue, 375, "Zakat should be 375")
+            ];
+        });
+
+        // Test 11: Business above nisab
+        test("Perniagaan di atas nisab", () => {
+            const result = ZakatLib.calculateBusinessZakat(200000, 50000);
+            return [
+                assertTrue(result.isEligible, "Should be eligible (net assets = 150000)"),
+                assertEqual(result.netAssets, 150000, "Net assets should be 150000"),
+                assertEqual(result.zakatDue, 3750, "Zakat should be 3750 (150000 × 0.025)")
+            ];
+        });
+
+        // Test 12: Zakat rate verification
+        test("Kadar zakat adalah 2.5% (1/40)", () => {
+            return [
+                assertEqual(ZakatLib.ZAKAT_RATE, 0.025, "Zakat rate should be 0.025"),
+                assertEqual(ZakatLib.ZAKAT_RATE, 1/40, "Zakat rate should be 1/40")
+            ];
+        });
+
+        // Test 13: Nisab values
+        test("Nilai nisab adalah betul", () => {
+            return [
+                assertEqual(ZakatLib.NISAB_GOLD_GRAMS, 85, "Gold nisab should be 85g"),
+                assertEqual(ZakatLib.NISAB_SILVER_GRAMS, 595, "Silver nisab should be 595g"),
+                assertEqual(ZakatLib.NISAB_AMOUNT, 15000, "Money nisab should be 15000")
+            ];
+        });
+
+        // Run all tests
+        const resultsDiv = document.getElementById('results');
+        let totalTests = 0;
+        let passedTests = 0;
+
+        tests.forEach(({ name, fn }) => {
+            const testDiv = document.createElement('div');
+            testDiv.className = 'test';
+
+            const nameDiv = document.createElement('div');
+            nameDiv.className = 'test-name';
+            nameDiv.textContent = name;
+            testDiv.appendChild(nameDiv);
+
+            const resultDiv = document.createElement('div');
+            resultDiv.className = 'test-result';
+
+            try {
+                const assertions = fn();
+                const allPassed = assertions.every(a => a.pass);
+
+                totalTests++;
+                if (allPassed) {
+                    passedTests++;
+                    testDiv.classList.add('pass');
+                    resultDiv.textContent = '✅ LULUS';
+                } else {
+                    testDiv.classList.add('fail');
+                    resultDiv.innerHTML = '❌ GAGAL<br>' +
+                        assertions.filter(a => !a.pass)
+                                 .map(a => '  - ' + a.message)
+                                 .join('<br>');
+                }
+
+                // Show all assertion results
+                const detailsDiv = document.createElement('div');
+                detailsDiv.style.fontSize = '11px';
+                detailsDiv.style.marginTop = '5px';
+                detailsDiv.style.color = '#666';
+                assertions.forEach(a => {
+                    detailsDiv.innerHTML += (a.pass ? '✓' : '✗') + ' ' + a.message + '<br>';
+                });
+                resultDiv.appendChild(detailsDiv);
+
+            } catch (error) {
+                totalTests++;
+                testDiv.classList.add('fail');
+                resultDiv.textContent = '❌ ERROR: ' + error.message;
+            }
+
+            testDiv.appendChild(resultDiv);
+            resultsDiv.appendChild(testDiv);
+        });
+
+        // Summary
+        const summaryDiv = document.createElement('div');
+        summaryDiv.style.marginTop = '20px';
+        summaryDiv.style.padding = '15px';
+        summaryDiv.style.background = passedTests === totalTests ? '#d1fae5' : '#fef3c7';
+        summaryDiv.style.border = '2px solid ' + (passedTests === totalTests ? '#059669' : '#f59e0b');
+        summaryDiv.style.borderRadius = '5px';
+        summaryDiv.style.fontWeight = 'bold';
+        summaryDiv.innerHTML = `
+            <h2>Ringkasan Test</h2>
+            <p style="font-size: 18px;">
+                ${passedTests} / ${totalTests} test lulus
+                ${passedTests === totalTests ? '🎉' : ''}
+            </p>
+        `;
+        resultsDiv.insertBefore(summaryDiv, resultsDiv.firstChild);
+    </script>
+</body>
+</html>

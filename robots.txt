@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://faridrameli.github.io/kalkulator-zakat/sitemap.xml
